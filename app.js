@@ -3,6 +3,52 @@ const client = new Discord.Client();
 const sql = require("sqlite");
 var deleteIds = [];
 sql.open("./kingdoms.sqlite");
+function genLP () {
+	var returnString = "ccc00000|ccc00000|000kkk00|000kkk00|000kkk00|00000000|ttt00000|ttt00000";
+	for(var i = 0; i < returnString.length; i++) {
+		if(returnString[i] == 0) {
+			let num = Math.random();
+			if(num > 0.45) {
+				returnString = returnString.slice(0, i) + "w" + returnString.slice(i + 1, returnString.length);
+			}
+			else {
+				returnString = returnString.slice(0, i) + "d" + returnString.slice(i + 1, returnString.length);
+			}
+		}
+	}
+	return returnString;
+}
+function unencrypt (code) {
+	var returnString = "";
+	for(var i = 0; i < code.length; i++) {
+		let current;
+		switch(code[i]) { //This supposedly works on Discord?
+			case "c":
+				current = "馃彮";
+				break;
+			case "k":
+				current = "馃彴";
+				break;
+			case "t":
+				current = "馃彉";
+				break;
+			case "w":
+				current = "馃尣";
+				break;
+			case "d":
+				current = "<:dirt:359865296770695169>";
+				break;
+			case "|":
+				current = "\n";
+				break;
+			default:
+				current = "err";
+				break;
+		}
+		returnString += current;
+	}
+	return returnString;
+}
 client.on('ready', () => {
 	console.log(`Logged in as ${client.user.tag}!`);
 	client.user.setGame("=help");
@@ -129,7 +175,7 @@ client.on('message', msg => {
 	if(msg.content.trim() == '=invite') {
 		msg.channel.send("http://bit.ly/kingbot");
 	}
-	if(msg.content.trim() == '=leave') {
+	if(msg.content.trim() == '=leave') { //If for some reason, I need to make a bot leave a server.
 		if(msg.author.id != 298636036135714816) {
 			return;
 		}
@@ -189,7 +235,7 @@ client.on('message', msg => {
 						msg.reply("No pings allowed in your kingdom name!");
 					}
 					else if(!row) { // Can't find the row.
-						sql.run("INSERT INTO kingdoms VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [msg.author.id, content, 1, 1, null, msg.guild.id, 0, 0, 0, 0]);
+						sql.run("INSERT INTO kingdoms VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [msg.author.id, content, 1, 1, null, msg.guild.id, 0, 0, 0, 0, 0, genLP()]);
 						msg.reply("Kingdom " + content + " added!");
 					}
 					else { // Can find the row.
@@ -198,8 +244,8 @@ client.on('message', msg => {
 				}
 			});
 		}).catch(() => {
-			sql.run("CREATE TABLE IF NOT EXISTS kingdoms (userId INTEGER, name TEXT, aa INTEGER, da INTEGER, attackDate TEXT, serverId INTEGER, wood INTEGER, iron INTEGER, diamond INTEGER, kingCoins INTEGER)").then(() => {
-				sql.run("INSERT INTO kingdoms VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [msg.author.id, content, 1, 1, null, msg.guild.id, 0, 0, 0, 0]);
+			sql.run("CREATE TABLE IF NOT EXISTS kingdoms (userId INTEGER, name TEXT, aa INTEGER, da INTEGER, attackDate TEXT, serverId INTEGER, wood INTEGER, iron INTEGER, diamond INTEGER, kingCoins INTEGER, copperCoins INTEGER, land TEXT)").then(() => {
+				sql.run("INSERT INTO kingdoms VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [msg.author.id, content, 1, 1, null, msg.guild.id, 0, 0, 0, 0, 0, genLP()]);
 				msg.reply("Kingdom " + content + " added! (In accordance with the Discord Developer ToS, by adding your kindgom you agree to let KingdomBot store End User Data. If you do not agree, use =delk.)");
 			})
 		});
@@ -241,12 +287,6 @@ client.on('message', msg => {
 			msg.reply("Couldn't find your kingdom...");    
 		});
 	}
-	if(msg.content.trim().startsWith("=speak ") && msg.author.id == 298636036135714816) {
-		let content = Object.create(msg).content;
-		content = content.replace("=speak ", "");
-		msg.channel.send(content);
-		msg.delete();
-	}
 	if(msg.content.trim().startsWith("=kingdominfo")) {
 		let content = Object.create(msg).content.trim();
 		if(content === "=kingdominfo") {
@@ -258,120 +298,41 @@ client.on('message', msg => {
 				var theEmbed = new Discord.RichEmbed();
 				theEmbed.setFooter("Requested by " + msg.author.username + "#" + msg.author.discriminator, msg.author.avatarURL);
 				theEmbed.setTitle("Kingdom Info");
-				theEmbed.setDescription(`Kingdom name: ${row.name}\nKingCoins: ${row.kingCoins}\n<:wood:356908039951089674> ${row.wood}\n<:iron:357347435728863233> ${row.iron}\nDiamond: ${row.diamond}`);
+				theEmbed.setDescription(`Kingdom name: ${row.name}\nKingCoins: ${row.kingCoins}\n<:wood:356908039951089674> - ${row.wood}\n<:iron:357347435728863233> - ${row.iron}\n:gem: - ${row.diamond}`);
 				theEmbed.setTimestamp();
 				theEmbed.setColor(0x7289da);
 				msg.channel.send({embed: theEmbed});
 			}).catch(() => msg.reply("Couldn't find your kingdom... "));
 		}
 	}
-	if(msg.content.trim().startsWith("=attack ")) {
-		let content = Object.create(msg).content;
-		content = content.replace('=attack ', '');
-		content = content.trim();
+	if(msg.content.trim().startsWith("=land")) {
 		sql.get('SELECT * FROM kingdoms WHERE userId = ? AND serverId = ?', [msg.author.id, msg.guild.id]).then(row => {
 			if(!row) {
 				msg.reply("Couldn't find your kingdom...");
+				return;
 			}
-			else if(row.gold < 50) {
-				msg.reply("You don't have enough gold to initiate an attack!");
+			var moreThing = new Discord.RichEmbed();
+			moreThing.setTitle("Land Plot");
+			moreThing.setDescription("Use =kingdominfo to see stats.");
+			moreThing.addField("Land:", unencrypt(row.land));
+			moreThing.setColor(0x7289da);
+			moreThing.setFooter("Requested by " + msg.author.username + "#" + msg.author.discriminator, msg.author.avatarURL);
+			moreThing.setTimestamp();	
+			if(msg.content.trim() == "=land DM") {
+				try {
+					msg.author.dmChannel.send({embed: moreThing});
+				}
+				catch (e) {
+					try {
+						msg.author.createDM().then(() => msg.author.dmChannel.send({embed: moreThing}));
+					}
+					catch(e) {
+						msg.reply("To use this, please allow DMs from KingdomBot. " + e.message);
+					}
+				}
+				return;
 			}
-			else if(/^<@\d*>$/.test(content)){
-				var newContent = content.replace(/<|@|>/g, '');
-				msg.reply(newContent);
-				sql.get('SELECT * FROM kingdoms WHERE userId = ? AND serverId = ?', [newContent, msg.guild.id]).then(row2 => {
-					if(!row2) {
-						msg.reply("Couldn't find your target kingdom...");
-					}
-					else {
-						sql.run('UPDATE kingdoms SET gold = ? WHERE userId = ? AND serverId = ?', [row.gold - 50, msg.author.id, msg.guild.id]);
-						var probability = calcProb(row.aa, row2.da);
-						var raNum = Math.random();
-						var success = probability / 100 < raNum;
-						var setInt = global.setInterval(function(arr, iterNum) {
-							msg.channel.send(arr[iterNum]);
-							if(iterNum === arr.length - 1) {
-								global.clearInterval(setInt);
-							}
-							iterNum++;
-						}, [":crossed_swords:", ":bow_and_arrow:", ":bomb:", ":boom:", success ? "The attack succeeded!" : "The attack failed..."], 0);
-						if(success) {
-							if(row2.gold >= 80) {
-								sql.run('UPDATE kingdoms SET gold = ? WHERE name = ? AND serverId = ?', [row2.gold - 80, content, msg.guild.id]).then(() => {
-									sql.run('UPDATE kingdoms SET gold = ? WHERE userId = ? AND serverId = ?', [row.gold + 30, msg.author.id, msg.guild.id]);
-								});
-							}
-							else {
-								sql.run('UPDATE kingdoms SET gold = 0 WHERE name = ? AND serverId = ?', [content, msg.guild.id]).then(() => {
-									sql.run('UPDATE kingdoms SET gold = ? WHERE userId = ? AND serverId = ?', [row.gold + 30, msg.author.id, msg.guild.id]);
-								});
-							}
-							msg.reply("You got 80 gold!");
-						}
-						else {
-							sql.run('UPDATE kingdoms SET gold = ? WHERE name = ? AND serverId = ?', [row2.gold + 30, content, msg.guild.id]).then(() => {
-								sql.run('UPDATE kingdoms SET gold = ? WHERE userId = ? AND serverId = ?', [row.gold - 30, msg.author.id, msg.guild.id]);
-							});
-							msg.reply("You lost 80 gold...");
-						}
-					}
-				}).catch((e) => {
-					console.error(e);
-					msg.reply("Couldn't find your target kingdom...");
-				});
-			}
-			else {
-				sql.get('SELECT * FROM kingdoms WHERE name = ? AND serverId = ?', [content, msg.guild.id]).then(row2 => {
-					if(!row2) {
-						msg.reply("Couldn't find your target kingdom...");
-					}
-					else {
-						sql.run('UPDATE kingdoms SET gold = ? WHERE userId = ? AND serverId = ?', [row.gold - 50, msg.author.id, msg.guild.id]);
-						var probability = calcProb(row.aa, row2.da);
-						var raNum = Math.random();
-						var success = probability / 100 < raNum;
-						var setInt = global.setInterval(function(arr, iterNum) {
-							msg.channel.send(arr[iterNum]);
-							if(iterNum === arr.length - 1) {
-								global.clearInterval(setInt);
-							}
-							iterNum++;
-						}, [":crossed_swords:", ":bow_and_arrow:", ":bomb:", ":boom:", success ? "The attack succeeded!" : "The attack failed..."], 0);
-						if(success) {
-							if(row2.gold >= 80) {
-								sql.run('UPDATE kingdoms SET gold = ? WHERE name = ? AND serverId = ?', [row2.gold - 80, content, msg.guild.id]).then(() => {
-									sql.run('UPDATE kingdoms SET gold = ? WHERE userId = ? AND serverId = ?', [row.gold + 30, msg.author.id, msg.guild.id]);
-								});
-							}
-							else {
-								sql.run('UPDATE kingdoms SET gold = 0 WHERE name = ? AND serverId = ?', [content, msg.guild.id]).then(() => {
-									sql.run('UPDATE kingdoms SET gold = ? WHERE userId = ? AND serverId = ?', [row.gold + 30, msg.author.id, msg.guild.id]);
-								});
-							}
-							msg.reply("You got 80 gold!");
-						}
-						else {
-							sql.run('UPDATE kingdoms SET gold = ? WHERE name = ? AND serverId = ?', [row2.gold + 30, content, msg.guild.id]).then(() => {
-								sql.run('UPDATE kingdoms SET gold = ? WHERE userId = ? AND serverId = ?', [row.gold - 30, msg.author.id, msg.guild.id]);
-							});
-							msg.reply("You lost 80 gold...");
-						}
-					}
-				}).catch(() => {
-					msg.reply("Couldn't find your target kingdom...");
-				});
-			}
-		}).catch(() => {
-			msg.reply("Couldn't find your kingdom...");
-		});
+		msg.channel.send({embed: moreThing});
+		}).catch(e => msg.reply("Couldn't find your kingdom... " + e.message));
 	}
 });
-client.on("guildMemberRemoved", function(server, user){
-	sql.get('SELECT * FROM kingdoms WHERE userId = ? AND serverId = ?', [user.id, server.id]).then(function(row){
-		if(row){
-			sql.run('DELETE FROM kingdoms WHERE userId = ? AND serverId = ?', [user.id, server.id]);
-			server.defaultChannel.send("Oh no! ${user.username} has left the server. :boom: The kingdom has been destroyed... :sob:");
-		}
-	});
-});
-client.login("No, I'm not telling you my token. Back off.");
