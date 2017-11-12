@@ -1,4 +1,4 @@
-//KingdomBot v.0.4.2 - some unfinished code
+//KingdomBot v.0.4.3 - some unfinished code
 
 const Discord = require("discord.js");
 const client = new Discord.Client();
@@ -21,7 +21,8 @@ function genLP () {
 	return returnString;
 }
 function unencrypt (code) {
-	var returnString = "";
+	var returnString = "<:xy:379054930444419082>:zero::one::two::three::four:\n:zero:";
+	var nTimes = 0;
 	for(var i = 0; i < code.length; i++) {
 		let current;
 		switch(code[i]) {
@@ -56,7 +57,7 @@ function unencrypt (code) {
 				current = "<:ir:376886074397687808>";
 				break;
 			case "|":
-				current = "\n";
+				current = "\n" + ([":one:", ":two:", ":three:", ":four:"][nTimes++]);
 				break;
 			default:
 				current = "err";
@@ -513,7 +514,7 @@ client.on('message', msg => {
 		newEmbed.addField("1", "Cuts down a tree specified at (x) and (y). (x) and (y) are necessary. Costs 50 copper coins and takes 3 hours to complete.");
 		newEmbed.addField("2", "Digs dirt at (x) and (y). (x) and (y) are necessary. Costs 40 copper coins and takes 2 hours to complete.");
 		newEmbed.addField("3", "Plants a tree at (x) and (y). (x) and (y) are necessary. Costs 45 copper coins and takes two hours to plant - but a week to grow. Will take up a workforce for planting period.");
-		newEmbed.addField("4 WIP", "Builds an iron refinery, which takes up a 2x2 space. Costs 110 copper coins and 20 wood.")
+		newEmbed.addField("4", "Builds an iron refinery, which takes up a 2x2 space. Costs 110 copper coins and 20 wood.")
 		newEmbed.setFooter("Requested by " + msg.author.username + "#" + msg.author.discriminator, msg.author.avatarURL);
 		newEmbed.setTimestamp();
 		msg.channel.send(newEmbed);
